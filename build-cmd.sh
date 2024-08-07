@@ -37,18 +37,19 @@ source "$(dirname "$AUTOBUILD_VARIABLES_FILE")/functions"
 config=( \
     -DBUILD_SHARED_LIBS=OFF \
     -DMZ_BUILD_TESTS=ON \
+    -DMZ_BUILD_UNIT_TESTS=ON \
     -DMZ_BZIP2=OFF \
     -DMZ_COMPAT=ON \
     -DMZ_FETCH_LIBS=OFF \
+    -DMZ_FORCE_FETCH_LIBS=OFF \
     -DMZ_ICONV=OFF \
     -DMZ_LIBBSD=OFF \
     -DMZ_LIBCOMP=OFF \
     -DMZ_LZMA=OFF \
     -DMZ_OPENSSL=OFF \
     -DMZ_PKCRYPT=OFF \
-    -DMZ_SIGNING=OFF \
     -DMZ_WZAES=OFF \
-    -DMZ_ZSTD=OFF \
+    -DMZ_ZSTD=OFF
     )
 
 pushd "$MINIZLIB_SOURCE_DIR"
@@ -58,16 +59,14 @@ pushd "$MINIZLIB_SOURCE_DIR"
         windows*)
             load_vsvars
 
-            cmake -G "Ninja Multi-Config" . \
-                  -DCMAKE_C_FLAGS:STRING="$LL_BUILD_RELEASE" \
-                  -DCMAKE_CXX_FLAGS:STRING="$LL_BUILD_RELEASE" \
+            mkdir -p "build"
+            pushd "build"
+            cmake $(cygpath -m ${top}/${MINIZLIB_SOURCE_DIR}) -G "Ninja Multi-Config" \
                   "${config[@]}" \
                   -DCMAKE_INSTALL_PREFIX=$(cygpath -m $stage) \
                   -DCMAKE_INSTALL_LIBDIR="$(cygpath -m "$stage/lib/release")" \
-                  -DCMAKE_INSTALL_INCLUDEDIR="$(cygpath -m "$stage/include/minizip-ng")" \
-                  -DZLIB_INCLUDE_DIRS="$(cygpath -m "$stage/packages/include/zlib-ng/")" \
-                  -DZLIB_LIBRARIES="$(cygpath -m "$stage/packages/lib/release/zlib.lib")"
-
+                  -DZLIB_INCLUDE_DIR="$(cygpath -m "$stage/packages/include/zlib-ng/")" \
+                  -DZLIB_LIBRARY="$(cygpath -m "$stage/packages/lib/release/zlib.lib")"
 
             cmake --build . --config Release
 
@@ -77,24 +76,29 @@ pushd "$MINIZLIB_SOURCE_DIR"
             fi
 
             cmake --install . --config Release
+
+            mkdir -p $stage/include/minizip-ng
+            mv $stage/include/minizip/*.h "$stage/include/minizip-ng/"
+            popd
         ;;
 
         # ------------------------- darwin, darwin64 -------------------------
         darwin*)
+            mkdir -p "build"
+            pushd "build"
 
             export MACOSX_DEPLOYMENT_TARGET="$LL_BUILD_DARWIN_DEPLOY_TARGET"
 
             opts="${TARGET_OPTS:--arch $AUTOBUILD_CONFIGURE_ARCH $LL_BUILD_RELEASE}"
 
-            cmake ../${MINIZLIB_SOURCE_DIR} -GXcode \
+            cmake ${top}/${MINIZLIB_SOURCE_DIR} -G "Ninja Multi-Config" \
                   -DCMAKE_C_FLAGS:STRING="$(remove_cxxstd $opts)" \
                   -DCMAKE_CXX_FLAGS:STRING="$opts" \
                   "${config[@]}" \
                   -DCMAKE_INSTALL_PREFIX=$stage \
                   -DCMAKE_INSTALL_LIBDIR="$stage/lib/release" \
-                  -DCMAKE_INSTALL_INCLUDEDIR="$stage/include/minizip-ng" \
-                  -DZLIB_INCLUDE_DIRS="$stage/packages/include/zlib-ng/" \
-                  -DZLIB_LIBRARIES="$stage/packages/lib/release/libz.a" \
+                  -DZLIB_INCLUDE_DIR="${stage}/packages/include/zlib-ng/" \
+                  -DZLIB_LIBRARY="${stage}/packages/lib/release/libz.a" \
                   -DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET} \
                   -DCMAKE_OSX_ARCHITECTURES="x86_64"
 
@@ -106,14 +110,17 @@ pushd "$MINIZLIB_SOURCE_DIR"
             fi
 
             cmake --install . --config Release
+
+            mkdir -p $stage/include/minizip-ng
+            mv $stage/include/minizip/*.h "$stage/include/minizip-ng/"
+            popd
         ;;            
 
         # -------------------------- linux, linux64 --------------------------
         linux*)
             # Prefer out of source builds
-            rm -rf build
             mkdir -p build
-            pushd build
+            pushd "build"
         
             # Default target per autobuild build --address-size
             opts="${TARGET_OPTS:--m$AUTOBUILD_ADDRSIZE $LL_BUILD_RELEASE}"
@@ -124,9 +131,8 @@ pushd "$MINIZLIB_SOURCE_DIR"
                   "${config[@]}" \
                   -DCMAKE_INSTALL_PREFIX=$stage \
                   -DCMAKE_INSTALL_LIBDIR="$stage/lib/release" \
-                  -DCMAKE_INSTALL_INCLUDEDIR="$stage/include/minizip-ng" \
-                  -DZLIB_INCLUDE_DIRS="$stage/packages/include/zlib-ng/" \
-                  -DZLIB_LIBRARIES="$stage/packages/lib/release/libz.a"
+                  -DZLIB_INCLUDE_DIR="${stage}/packages/include/zlib-ng/" \
+                  -DZLIB_LIBRARY="${stage}/packages/lib/release/libz.a"
 
             cmake --build . --config Release
 
@@ -137,12 +143,14 @@ pushd "$MINIZLIB_SOURCE_DIR"
 
             cmake --install . --config Release
 
+            mkdir -p $stage/include/minizip-ng
+            mv $stage/include/minizip/*.h "$stage/include/minizip-ng/"
             popd
         ;;
     esac
 
     mkdir -p "$stage/LICENSES"
-    cp LICENSE "$stage/LICENSES/minizip-ng.txt"
+    cp ${top}/${MINIZLIB_SOURCE_DIR}/LICENSE "$stage/LICENSES/minizip-ng.txt"
 popd
 
 mkdir -p "$stage"/docs/minizip-ng/

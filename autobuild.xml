@@ -189,7 +189,7 @@
           </map>
           <key>manifest</key>
           <array>
-            <string>lib/release/libminizip.lib</string>
+            <string>lib/release/minizip.lib</string>
           </array>
           <key>name</key>
           <string>windows</string>
