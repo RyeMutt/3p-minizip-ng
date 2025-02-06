@@ -30,8 +30,10 @@ source_environment_tempfile="$stage/source_environment.sh"
 "$autobuild" source_environment > "$source_environment_tempfile"
 . "$source_environment_tempfile"
 
-# remove_cxxstd
+# remove_cxxstd apply_patch
 source "$(dirname "$AUTOBUILD_VARIABLES_FILE")/functions"
+
+apply_patch "$top/patches/fix-deprecated-register.patch" "$MINIZLIB_SOURCE_DIR"
 
 # CMake configuration options for all platforms
 config=( \
